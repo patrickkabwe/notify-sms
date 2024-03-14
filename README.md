@@ -19,7 +19,7 @@ NOTIFY_SMS_PASSWORD="***********"
 Before you begin, ensure you have Go installed on your system. This module requires Go version 1.21 or **higher** to run.
 
 ```go
-go get https://github.com/patrickkabwe/notify-sms
+go get github.com/patrickkabwe/notify-sms-go
 ```
 
 ## ⚡️ Quickstart
@@ -30,7 +30,7 @@ Returns all the senders(business name) you created on your profile
 ```go
 package main
 
-import 	notifysms "github.com/patrickkabwe/notify-sms"
+import 	notifysms "github.com/patrickkabwe/notify-sms-go"
 
 func main() {
 	
@@ -60,7 +60,7 @@ Sends sms to a list of recipients defined as contacts
 ```go
 package main
 
-import 	notifysms "github.com/patrickkabwe/notify-sms"
+import 	notifysms "github.com/patrickkabwe/notify-sms-go"
 
 func main() {
 
