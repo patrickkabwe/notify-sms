@@ -22,7 +22,7 @@ type NotifySMS interface {
 	SendToChannel(params SendSmsToChannelParams) (ok bool, err error)
 	SendToContactGroup(params SendSmsToContactGroup) (ok bool, err error)
 	CreateSenderID(params CreateSenderIDParams) (APIResponse[SenderAPIResponse], error)
-	GetSenderIDs() (APIResponse[SendersAPIResponse], error)
+	GetSenders() (APIResponse[SendersAPIResponse], error)
 	GetSMSBalance()
 }
 
@@ -111,7 +111,7 @@ func (n notify) CreateSenderID(params CreateSenderIDParams) (APIResponse[SenderA
 	panic("implement me")
 }
 
-func (n notify) GetSenderIDs() (APIResponse[SendersAPIResponse], error) {
+func (n notify) GetSenders() (APIResponse[SendersAPIResponse], error) {
 	endpoint := fmt.Sprintf("%s/notify/sender-ids/fetch?error_context=CONTEXT_API_ERROR_JSON", n.baseURL)
 	headers := make(map[string]string)
 	headers["Authorization"] = fmt.Sprintf("Bearer %s", tokenCache["token"])
