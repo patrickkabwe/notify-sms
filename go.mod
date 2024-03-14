@@ -1,3 +1,3 @@
-module github.com/patrickkabwe/notify-sms-go.git
+module github.com/patrickkabwe/notify-sms-go
 
-go 1.22
+go 1.21
