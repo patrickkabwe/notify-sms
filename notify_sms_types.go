@@ -99,13 +99,3 @@ type SendSmsToContactGroup struct {
 	// e.g Hello Notify
 	Message string
 }
-
-type SendSmsParams struct {
-	// RecipientType - can be defined as either
-	//
-	// 1. **NOTIFY_RECIPIENT_TYPE_CHANNEL** - used when sending a sms to a channel.
-	//
-	// 2. **NOTIFY_RECIPIENT_TYPE_CUSTOM** - used when sending a sms to a list of contacts.
-	//
-	// 3. **NOTIFY_RECIPIENT_TYPE_CONTACT_GROUP** - used when sending a sms to a contact group.
-}
