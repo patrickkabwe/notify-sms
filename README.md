@@ -98,7 +98,7 @@ func main() {
 ## 👍 Contribute
 If you want to say Thank You and/or support the active development of Notify SMS:
 
-- dd a GitHub Star to the project.
+- Add a GitHub Star to the project.
 - Tweet about the project on your 𝕏 (Twitter).
 - Write a review or tutorial on [Medium](https://www,medium.com), [Dev.to](https://www.dev.to) or personal blog.
 
