@@ -96,7 +96,7 @@ func main() {
 - Check SMS balance(WIP) - Coming soon
 
 ## 👍 Contribute
-If you want to say Thank You and/or support the active development of Fiber:
+If you want to say Thank You and/or support the active development of Notify SMS:
 
 - dd a GitHub Star to the project.
 - Tweet about the project on your 𝕏 (Twitter).
