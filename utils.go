@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"time"
 )
 
@@ -40,9 +41,9 @@ func makeRequest(method, endpoint string, params io.Reader, opt MakeRequestOptio
 	return resBody, nil
 }
 
-func auth(username, password, baseURL string) error {
-	endpoint := fmt.Sprintf("%s/authentication/web/login?error_context=CONTEXT_API_ERROR_JSON", baseURL)
-	bodyInBytes := []byte(fmt.Sprintf(`{"username": "%s", "password": "%s"}`, username, password))
+func authFunc(n *notify) error {
+	endpoint := fmt.Sprintf("%s/authentication/web/login?error_context=CONTEXT_API_ERROR_JSON", n.baseURL)
+	bodyInBytes := []byte(fmt.Sprintf(`{"username": "%s", "password": "%s"}`, n.username, n.password))
 
 	bodyReader := bytes.NewReader(bodyInBytes)
 	res, err := makeRequest(http.MethodPost, endpoint, bodyReader, MakeRequestOptions{})
@@ -68,4 +69,9 @@ func auth(username, password, baseURL string) error {
 	tokenCache["token"] = authResponse.Payload.Token
 
 	return nil
+}
+
+func validateUsername(username string) bool {
+	match, _ := regexp.MatchString(`^(\+)?(\d{12})$`, username)
+	return username != "" && match
 }
