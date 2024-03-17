@@ -12,8 +12,11 @@ import (
 const ErrorPrefix = "NOTIFY_SMS: "
 
 var (
-	MissingCredErr = errors.New(ErrorPrefix + "username and password is missing")
-	InvalidCredErr = errors.New(ErrorPrefix + "failed to authenticate please check your username or password")
+	MissingCredErr     = errors.New(ErrorPrefix + "username and password is missing")
+	InvalidUsernameErr = errors.New(ErrorPrefix + "username is invalid")
+	InvalidCredErr     = errors.New(ErrorPrefix + "failed to authenticate please check your username or password")
+	MissingContactsErr = errors.New(ErrorPrefix + "contacts are missing")
+	InvalidPayloadErr  = errors.New(ErrorPrefix + "invalid payload")
 )
 var tokenCache = make(map[string]Token)
 
@@ -32,27 +35,43 @@ type notify struct {
 	baseURL  string
 	username string
 	password string
+	authFunc func() error // Add this line
 }
 
 func NewClient(params NewClientParams) (NotifySMS, error) {
-	if params.Password == "" || params.UserName == "" {
+	if params.Password == "" || params.Username == "" {
 		return nil, MissingCredErr
 	}
-	baseURL := "https://production.olympusmedia.co.zm/api/v1"
-	err := auth(params.UserName, params.Password, baseURL)
+
+	if !validateUsername(params.Username) {
+		return nil, InvalidUsernameErr
+	}
+
+	client := &notify{
+		baseURL:  "https://production.olympusmedia.co.zm/api/v1",
+		username: params.Username,
+		password: params.Password,
+	}
+
+	client.authFunc = func() error {
+		if params.authFunc != nil {
+			return params.authFunc(client)
+		}
+		return authFunc(client)
+	}
+
+	err := client.authFunc()
+
 	if err != nil {
 		panic(err)
 	}
-	return &notify{
-		baseURL:  baseURL,
-		Token:    tokenCache["token"],
-		SenderID: "",
-		username: params.UserName,
-		password: params.Password,
-	}, nil
+	return client, nil
 }
 
-func (n notify) SendToContacts(params SendSmsToCustomContactsParams) (bool, error) {
+func (n *notify) SendToContacts(params SendSmsToCustomContactsParams) (bool, error) {
+	if len(params.Contacts) == 0 {
+		return false, MissingContactsErr
+	}
 	payload := SendSmsToCustomContactsParams{
 		RecipientType: "NOTIFY_RECIEPIENT_TYPE_CUSTOM",
 		SenderID:      params.SenderID,
@@ -75,7 +94,7 @@ func (n notify) SendToContacts(params SendSmsToCustomContactsParams) (bool, erro
 
 }
 
-func (n notify) SendToChannel(params SendSmsToChannelParams) (ok bool, err error) {
+func (n *notify) SendToChannel(params SendSmsToChannelParams) (ok bool, err error) {
 	payload := SendSmsToChannelParams{
 		RecipientType: "NOTIFY_RECIEPIENT_TYPE_CHANNEL",
 		SenderID:      params.SenderID,
@@ -90,7 +109,7 @@ func (n notify) SendToChannel(params SendSmsToChannelParams) (ok bool, err error
 	return n.sendSMS(jsonBody)
 }
 
-func (n notify) SendToContactGroup(params SendSmsToContactGroup) (ok bool, err error) {
+func (n *notify) SendToContactGroup(params SendSmsToContactGroup) (ok bool, err error) {
 	payload := SendSmsToContactGroup{
 		RecipientType: "NOTIFY_RECIEPIENT_TYPE_CONTACT_GROUP",
 		SenderID:      params.SenderID,
@@ -106,12 +125,12 @@ func (n notify) SendToContactGroup(params SendSmsToContactGroup) (ok bool, err e
 	return n.sendSMS(jsonBody)
 }
 
-func (n notify) CreateSenderID(params CreateSenderIDParams) (APIResponse[SenderAPIResponse], error) {
+func (n *notify) CreateSenderID(params CreateSenderIDParams) (APIResponse[SenderAPIResponse], error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (n notify) GetSenders() (APIResponse[SendersAPIResponse], error) {
+func (n *notify) GetSenders() (APIResponse[SendersAPIResponse], error) {
 	endpoint := fmt.Sprintf("%s/notify/sender-ids/fetch?error_context=CONTEXT_API_ERROR_JSON", n.baseURL)
 	headers := make(map[string]string)
 	headers["Authorization"] = fmt.Sprintf("Bearer %s", tokenCache["token"])
@@ -132,15 +151,16 @@ func (n notify) GetSenders() (APIResponse[SendersAPIResponse], error) {
 	return senderRes, err
 }
 
-func (n notify) GetSMSBalance() {
+func (n *notify) GetSMSBalance() {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (n notify) sendSMS(jsonBody []byte) (bool, error) {
+func (n *notify) sendSMS(jsonBody []byte) (bool, error) {
 	endpoint := fmt.Sprintf("%s/notify/channels/messages/compose?error_context=CONTEXT_API_ERROR_JSON", n.baseURL)
 	headers := make(map[string]string)
 	headers["Authorization"] = fmt.Sprintf("Bearer %s", tokenCache["token"])
+
 	res, err := makeRequest(http.MethodPost, endpoint, bytes.NewReader(jsonBody), MakeRequestOptions{
 		Headers: headers,
 	})
@@ -154,12 +174,17 @@ func (n notify) sendSMS(jsonBody []byte) (bool, error) {
 	err = json.Unmarshal(res, &parsedBody)
 
 	if err != nil {
-		log.Printf(ErrorPrefix+"/%s\n", err)
+		log.Printf(ErrorPrefix+"%s\n", err)
 		return false, err
 	}
 
 	if !parsedBody.Success {
-		log.Printf(ErrorPrefix+"/%s\n", err)
+		err = errors.New(parsedBody.Message)
+		if parsedBody.Error != (ErrorResponse{}) {
+			err = errors.New(parsedBody.Error.Message)
+		}
+		log.Printf(ErrorPrefix+"%s\n", string(res))
+		log.Printf(ErrorPrefix+"%s\n", err)
 		return false, err
 	}
 
