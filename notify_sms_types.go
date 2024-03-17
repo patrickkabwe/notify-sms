@@ -102,7 +102,7 @@ type SendSmsToContactGroup struct {
 	SenderID string `json:"senderId"`
 	// ContactGroup - The group id you are trying to send a sms message.
 	// PS: Only define this field when you are trying to send sms to a specific group.
-	ContactGroup string
+	ContactGroup string `json:"contactGroup"`
 	// Message - Text message you are sending to contact(s)
 	// e.g Hello Notify
 	Message string
