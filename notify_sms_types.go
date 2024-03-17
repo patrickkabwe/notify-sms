@@ -13,9 +13,16 @@ type MakeRequestOptions struct {
 }
 
 type APIResponse[T any] struct {
-	Success bool   `json:"success"`
+	Success bool          `json:"success"`
+	Message string        `json:"message"`
+	Payload T             `json:"payload"`
+	Error   ErrorResponse `json:"error"`
+}
+
+type ErrorResponse struct {
+	Code    int    `json:"code"`
+	Title   string `json:"title"`
 	Message string `json:"message"`
-	Payload T      `json:"payload"`
 }
 
 type AuthAPIResponse struct {
@@ -61,12 +68,13 @@ type CreateSenderIDParams struct {
 }
 
 type NewClientParams struct {
-	UserName string `json:"userName"`
+	Username string `json:"userName"`
 	Password string `json:"password"`
+	authFunc func(n *notify) error
 }
 
 type SendSmsToChannelParams struct {
-	RecipientType RecipientType `json:"recipientType"`
+	RecipientType RecipientType `json:"reciepientType"`
 	// SenderID - sender id collected from GetSenderIDs
 	SenderID string `json:"senderId"`
 	// Channel - channel you are trying to send sms message to.
@@ -89,7 +97,7 @@ type SendSmsToCustomContactsParams struct {
 }
 
 type SendSmsToContactGroup struct {
-	RecipientType RecipientType `json:"recipientType"`
+	RecipientType RecipientType `json:"reciepientType"`
 	// SenderID - sender id collected from GetSenderIDs
 	SenderID string `json:"senderId"`
 	// ContactGroup - The group id you are trying to send a sms message.
