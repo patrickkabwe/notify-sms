@@ -321,8 +321,7 @@ func mockRequest(method, endpoint string, body io.Reader, opt MakeRequestOptions
 	}
 
 	if method == http.MethodGet && strings.Contains(endpoint, "sender-ids") {
-		return []byte(`
-{"success":true,"message":"","payload":{"data":[]}}`), nil
+		return []byte(`{"success":true,"message":"","payload":{"data":[]}}`), nil
 	}
 
 	return nil, nil
