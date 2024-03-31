@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 	"testing"
 )
@@ -144,7 +143,7 @@ func TestSendToContacts(t *testing.T) {
 		{
 			name: "Should send sms to custom contacts",
 			params: SendSmsToCustomContactsParams{
-				Contacts: []string{os.Getenv("NOTIFY_SMS_TEST_CONTACT")},
+				Contacts: []string{"+260979600000"},
 				Message:  "Hello Patrick from Go SDK",
 				SenderID: "test_sender_id",
 			},
@@ -156,7 +155,7 @@ func TestSendToContacts(t *testing.T) {
 			params: SendSmsToCustomContactsParams{
 				Contacts: []string{},
 				Message:  "Hello Patrick from Go SDK",
-				SenderID: os.Getenv("NOTIFY_SMS_SENDER_ID"),
+				SenderID: "test_sender_id",
 			},
 			expectedErr:  MissingContactsErr,
 			expectedBool: false,
