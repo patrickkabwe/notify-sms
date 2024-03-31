@@ -21,7 +21,6 @@ var (
 	InvalidPayloadErr  = errors.New(ErrorPrefix + "invalid payload")
 	MissingAuthErr     = errors.New(ErrorPrefix + "authorization header is missing")
 )
-var tokenCache = make(map[string]Token)
 
 type NotifySMS interface {
 	SendToContacts(params SendSmsToCustomContactsParams) (ok bool, err error)
@@ -34,7 +33,6 @@ type NotifySMS interface {
 
 type notify struct {
 	token       Token
-	senderID    SenderID
 	baseURL     string
 	username    string
 	password    string
