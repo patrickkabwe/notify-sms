@@ -1,13 +1,9 @@
 package notify_sms
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
-	"os"
 	"regexp"
 	"time"
 )
@@ -39,36 +35,6 @@ func makeRequest(method, endpoint string, params io.Reader, opt MakeRequestOptio
 	}
 
 	return resBody, nil
-}
-
-func authFunc(n *notify) error {
-	endpoint := fmt.Sprintf("%s/authentication/web/login?error_context=CONTEXT_API_ERROR_JSON", n.baseURL)
-	bodyInBytes := []byte(fmt.Sprintf(`{"username": "%s", "password": "%s"}`, n.username, n.password))
-
-	bodyReader := bytes.NewReader(bodyInBytes)
-	res, err := makeRequest(http.MethodPost, endpoint, bodyReader, MakeRequestOptions{})
-	var authResponse APIResponse[AuthAPIResponse]
-
-	if err != nil {
-		log.Printf(ErrorPrefix+"/%s\n", err)
-		os.Exit(1)
-	}
-
-	err = json.Unmarshal(res, &authResponse)
-
-	if err != nil {
-		log.Printf(ErrorPrefix+"/%s\n", err)
-		os.Exit(1)
-	}
-
-	if !authResponse.Success {
-		log.Printf(ErrorPrefix+"/%s\n", err)
-		return InvalidCredErr
-	}
-
-	tokenCache["token"] = authResponse.Payload.Token
-
-	return nil
 }
 
 func validateUsername(username string) bool {

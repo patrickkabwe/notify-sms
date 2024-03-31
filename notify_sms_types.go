@@ -1,6 +1,7 @@
 package notify_sms
 
 import (
+	"io"
 	"time"
 )
 
@@ -68,9 +69,9 @@ type CreateSenderIDParams struct {
 }
 
 type NewClientParams struct {
-	Username string `json:"userName"`
-	Password string `json:"password"`
-	authFunc func(n *notify) error
+	Username    string `json:"userName"`
+	Password    string `json:"password"`
+	makeRequest func(method, endpoint string, params io.Reader, opt MakeRequestOptions) ([]byte, error)
 }
 
 type SendSmsToChannelParams struct {
