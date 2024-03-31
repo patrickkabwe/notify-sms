@@ -46,10 +46,4 @@ jobs:
       - name: Build
         run: go build -v .
       - name: Run tests
-        run: |
-          touch .env
-          echo "NOTIFY_SMS_USERNAME=${{ secrets.NOTIFY_SMS_USERNAME }}" >> .env
-          echo "NOTIFY_SMS_TEST_CONTACT=${{ secrets.NOTIFY_SMS_TEST_CONTACT }}" >> .env
-          echo "NOTIFY_SMS_PASSWORD=${{ secrets.NOTIFY_SMS_PASSWORD }}" >> .env
-          echo "NOTIFY_SMS_SENDER_ID=${{ secrets.NOTIFY_SMS_SENDER_ID }}" >> .env
-          make tests
+        run: make tests
