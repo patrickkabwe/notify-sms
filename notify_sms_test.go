@@ -3,95 +3,132 @@ package notify_sms
 import (
 	"encoding/json"
 	"errors"
+	"io"
+	"net/http"
 	"os"
+	"strings"
 	"testing"
 )
 
 func TestNewClient(t *testing.T) {
-	var authCalled bool
 	testCases := []struct {
-		name                 string
-		params               NewClientParams
-		expectedErr          error
-		expectAuthToBeCalled bool
+		name        string
+		params      NewClientParams
+		expectedErr error
+		client      NotifySMS
 	}{
 		{
 			name: "Should return error when username is missing",
 			params: NewClientParams{
 				Username: "",
 				Password: "hello123",
-				authFunc: func(n *notify) error {
-					authCalled = false
-					return nil
-				},
 			},
-			expectedErr:          MissingCredErr,
-			expectAuthToBeCalled: false,
+			expectedErr: MissingCredErr,
+			client:      nil,
 		},
 		{
 			name: "Should return error when password is missing",
 			params: NewClientParams{
 				Username: "hello",
 				Password: "",
-				authFunc: func(n *notify) error {
-					authCalled = false
-					return nil
-				},
 			},
-			expectedErr:          MissingCredErr,
-			expectAuthToBeCalled: false,
+			expectedErr: MissingCredErr,
+			client:      nil,
 		},
 		{
 			name: "Should return error when username is invalid",
 			params: NewClientParams{
 				Username: "hello",
 				Password: "hello123",
-				authFunc: func(n *notify) error {
-					authCalled = false
-					return nil
-				},
 			},
-			expectedErr:          InvalidUsernameErr,
-			expectAuthToBeCalled: false,
+			expectedErr: InvalidUsernameErr,
+			client:      nil,
 		},
 		{
 			name: "Should return nil when username and password are provided",
 			params: NewClientParams{
-				Username: "260979000000",
-				Password: "hello123",
-				authFunc: func(n *notify) error {
-					authCalled = false
-					return nil
-				},
+				Username:    "260979000000",
+				Password:    "hello123",
+				makeRequest: mockRequest,
 			},
-			expectedErr:          nil,
-			expectAuthToBeCalled: false,
-		},
-		{
-			name: "Should return nil when username and password are provided and authFunc is provided",
-			params: NewClientParams{
-				Username: "260979000000",
-				Password: "hello123",
-				authFunc: func(n *notify) error {
-					authCalled = true
-					return nil
-				},
+			expectedErr: nil,
+			client: &notify{
+				token:    "test_token",
+				baseURL:  "https://production.olympusmedia.co.zm/api/v1",
+				username: "260979000000",
+				password: "hello123",
 			},
-			expectedErr:          nil,
-			expectAuthToBeCalled: true,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := NewClient(tc.params)
-
+			client, err := NewClient(tc.params)
 			if !errors.Is(err, tc.expectedErr) {
 				t.Errorf("Expected %v, got %v", tc.expectedErr, err)
 			}
 
-			if tc.expectAuthToBeCalled != authCalled {
-				t.Errorf("Expected authFunc to be called: %v, got %v", tc.expectAuthToBeCalled, authCalled)
+			if client != nil {
+				mc := client.(*notify)
+				if mc.username != tc.params.Username {
+					t.Errorf("Expected %v, got %v", tc.params.Username, mc.username)
+				}
+
+				if mc.token == "" {
+					t.Errorf("Expected %v, got %v", tc.client.(*notify).token, mc.token)
+				}
+			}
+		})
+	}
+}
+
+func TestNotify_GetSenders(t *testing.T) {
+	testCases := []struct {
+		name        string
+		params      NewClientParams
+		expectedErr error
+	}{
+		{
+			name: "Should return senders when token is valid",
+			params: NewClientParams{
+				Username:    "260979000000",
+				Password:    "hello123",
+				makeRequest: mockRequest,
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "Should not return senders when token is invalid or missing",
+			params: NewClientParams{
+				Username:    "260979000000",
+				Password:    "hello123",
+				makeRequest: mockRequest,
+			},
+			expectedErr: MissingAuthErr,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			client, err := NewClient(tc.params)
+			if err != nil && !errors.Is(err, tc.expectedErr) {
+				t.Errorf("Expected %v, got %v", tc.expectedErr, err)
+			}
+
+			if client != nil {
+				if tc.expectedErr == nil {
+					_, err = client.GetSenders()
+					if err != nil {
+						t.Errorf("Expected nil, got %v", err)
+					}
+				} else {
+					client.(*notify).token = ""
+					_, err = client.GetSenders()
+					if !errors.Is(err, tc.expectedErr) {
+						t.Errorf("Expected %v, got %v", tc.expectedErr, err)
+					}
+				}
+
 			}
 		})
 	}
@@ -104,16 +141,16 @@ func TestSendToContacts(t *testing.T) {
 		expectedErr  error
 		expectedBool bool
 	}{
-		//{
-		//	name: "Should send sms to custom contacts",
-		//	params: SendSmsToCustomContactsParams{
-		//		Contacts: []string{os.Getenv("NOTIFY_SMS_TEST_CONTACT")},
-		//		Message:  "Hello Patrick from Go SDK",
-		//		SenderID: os.Getenv("NOTIFY_SMS_SENDER_ID"),
-		//	},
-		//	expectedErr:  nil,
-		//	expectedBool: true,
-		//},
+		{
+			name: "Should send sms to custom contacts",
+			params: SendSmsToCustomContactsParams{
+				Contacts: []string{os.Getenv("NOTIFY_SMS_TEST_CONTACT")},
+				Message:  "Hello Patrick from Go SDK",
+				SenderID: "test_sender_id",
+			},
+			expectedErr:  nil,
+			expectedBool: true,
+		},
 		{
 			name: "Should return error when contacts are missing",
 			params: SendSmsToCustomContactsParams{
@@ -128,17 +165,16 @@ func TestSendToContacts(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			client := &notify{
-				baseURL:  "https://production.olympusmedia.co.zm/api/v1",
-				username: os.Getenv("NOTIFY_SMS_USERNAME"),
-				password: os.Getenv("NOTIFY_SMS_PASSWORD"),
+			clientParams := NewClientParams{
+				Username:    "260979000000",
+				Password:    "hello123",
+				makeRequest: mockRequest,
 			}
+			client, err := NewClient(clientParams)
 
-			client.authFunc = func() error {
-				return authFunc(client)
+			if err != nil {
+				t.Errorf("Expected nil, got %v", err)
 			}
-
-			err := client.authFunc()
 
 			if err != nil {
 				t.Errorf("Expected nil, got %v", err)
@@ -153,61 +189,142 @@ func TestSendToContacts(t *testing.T) {
 	}
 }
 
-func Test_sendSMS(t *testing.T) {
-	str := SendSmsToCustomContactsParams{
-		RecipientType: "NOTIFY_RECIEPIENT_TYPE_CUSTOM",
-		Contacts:      []string{os.Getenv("NOTIFY_SMS_TEST_CONTACT")},
-		Message:       "Hello Patrick from Go SDK",
-		SenderID:      os.Getenv("NOTIFY_SMS_SENDER_ID"),
-	}
-
-	validBody, _ := json.Marshal(str)
+func Test_SendToChannel(t *testing.T) {
 
 	testCases := []struct {
-		name         string
-		payload      []byte
-		expectedBool bool
-		hasToken     bool
+		name    string
+		params  SendSmsToChannelParams
+		success bool
 	}{
 		{
-			name:         "Should return error when payload is invalid",
-			payload:      []byte(""),
-			expectedBool: false,
-			hasToken:     true,
+			name: "Should return error when payload is invalid",
+			params: SendSmsToChannelParams{
+				SenderID: "test_sender_id",
+				Channel:  "sms_channel",
+				Message:  "test message",
+			},
+			success: true,
 		},
 		{
-			name:         "Should return true when payload is valid",
-			payload:      validBody,
-			expectedBool: true,
-			hasToken:     true,
+			name:    "Should return true when payload is valid",
+			params:  SendSmsToChannelParams{},
+			success: false,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			client := &notify{
-				baseURL:  "https://production.olympusmedia.co.zm/api/v1",
-				username: os.Getenv("NOTIFY_SMS_USERNAME"),
-				password: os.Getenv("NOTIFY_SMS_PASSWORD"),
+			clientParams := NewClientParams{
+				Username:    "260979000000",
+				Password:    "hello123",
+				makeRequest: mockRequest,
+			}
+			client, err := NewClient(clientParams)
+
+			if err != nil {
+				t.Errorf("Expected nil, got %v", err)
 			}
 
-			client.authFunc = func() error {
-				return authFunc(client)
-			}
+			result, _ := client.SendToChannel(tc.params)
 
-			if tc.hasToken {
-				err := client.authFunc()
-
-				if err != nil {
-					t.Errorf("Expected nil, got %v", err)
-				}
-			}
-
-			result, _ := client.sendSMS(tc.payload)
-
-			if result != tc.expectedBool {
-				t.Errorf("Expected %v, got %v", tc.expectedBool, result)
+			if result != tc.success {
+				t.Errorf("Expected %v, got %v", tc.success, result)
 			}
 		})
 	}
+}
+
+func Test_SendToContactGroup(t *testing.T) {
+
+	testCases := []struct {
+		name    string
+		params  SendSmsToContactGroup
+		success bool
+	}{
+		{
+			name: "Should return error when payload is invalid",
+			params: SendSmsToContactGroup{
+				SenderID:     "test_sender_id",
+				ContactGroup: "sms_channel",
+				Message:      "test message",
+			},
+			success: true,
+		},
+		{
+			name:    "Should return true when payload is valid",
+			params:  SendSmsToContactGroup{},
+			success: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			clientParams := NewClientParams{
+				Username:    "260979000000",
+				Password:    "hello123",
+				makeRequest: mockRequest,
+			}
+			client, err := NewClient(clientParams)
+
+			if err != nil {
+				t.Errorf("Expected nil, got %v", err)
+			}
+
+			result, _ := client.SendToContactGroup(tc.params)
+
+			if result != tc.success {
+				t.Errorf("Expected %v, got %v", tc.success, result)
+			}
+		})
+	}
+}
+
+func mockRequest(method, endpoint string, body io.Reader, opt MakeRequestOptions) ([]byte, error) {
+	if method == http.MethodPost && strings.Contains(endpoint, "authentication") {
+		var res NewClientParams
+		err := json.NewDecoder(body).Decode(&res)
+		if err != nil {
+			return nil, err
+		}
+		if res.Username != "260979000000" && res.Password != "hello123" {
+			return nil, InvalidCredErr
+		}
+		return []byte(`{"success":true,"payload":{"token": "test_token"}}`), nil
+	}
+	authHeader := strings.Replace(opt.Headers["Authorization"], "Bearer ", "", 1)
+	if authHeader == "" {
+		return nil, MissingAuthErr
+	}
+
+	if method == http.MethodPost && strings.Contains(endpoint, "channels") {
+		var res map[string]interface{}
+		err := json.NewDecoder(body).Decode(&res)
+		if err != nil {
+			return nil, err
+		}
+
+		if res["senderId"] == "" || res["message"] == "" {
+			return nil, InvalidPayloadErr
+		}
+
+		if res["reciepientType"] == "NOTIFY_RECIEPIENT_TYPE_CHANNEL" {
+			if res["channel"] == "" {
+				return nil, InvalidPayloadErr
+			}
+		}
+		if res["reciepientType"] == "NOTIFY_RECIEPIENT_TYPE_CONTACT_GROUP" {
+			if res["contactGroup"] == "" {
+				return nil, InvalidPayloadErr
+			}
+		}
+
+		return []byte(`{"success":true,"message":"","payload":{}}`), nil
+	}
+
+	if method == http.MethodGet && strings.Contains(endpoint, "sender-ids") {
+		return []byte(`
+{"success":true,"message":"","payload":{"data":[]}}`), nil
+	}
+
+	return nil, nil
 }
