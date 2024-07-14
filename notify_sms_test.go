@@ -14,7 +14,7 @@ func TestNewClient(t *testing.T) {
 		name        string
 		params      NewClientParams
 		expectedErr error
-		client      NotifySMS
+		client      Client
 	}{
 		{
 			name: "Should return error when username is missing",
@@ -22,7 +22,7 @@ func TestNewClient(t *testing.T) {
 				Username: "",
 				Password: "hello123",
 			},
-			expectedErr: MissingCredErr,
+			expectedErr: ErrMissingCred,
 			client:      nil,
 		},
 		{
@@ -31,7 +31,7 @@ func TestNewClient(t *testing.T) {
 				Username: "hello",
 				Password: "",
 			},
-			expectedErr: MissingCredErr,
+			expectedErr: ErrMissingCred,
 			client:      nil,
 		},
 		{
@@ -40,7 +40,7 @@ func TestNewClient(t *testing.T) {
 				Username: "hello",
 				Password: "hello123",
 			},
-			expectedErr: InvalidUsernameErr,
+			expectedErr: ErrInvalidUsername,
 			client:      nil,
 		},
 		{
@@ -103,7 +103,7 @@ func TestNotify_GetSenders(t *testing.T) {
 				Password:    "hello123",
 				makeRequest: mockRequest,
 			},
-			expectedErr: MissingAuthErr,
+			expectedErr: ErrMissingAuth,
 		},
 	}
 
@@ -157,7 +157,7 @@ func TestSendToContacts(t *testing.T) {
 				Message:  "Hello Patrick from Go SDK",
 				SenderID: "test_sender_id",
 			},
-			expectedErr:  MissingContactsErr,
+			expectedErr:  ErrMissingContacts,
 			expectedBool: false,
 		},
 	}
@@ -179,7 +179,7 @@ func TestSendToContacts(t *testing.T) {
 				t.Errorf("Expected nil, got %v", err)
 			}
 
-			_, err = client.SendToContacts(tc.params)
+			err = client.SendToContacts(tc.params)
 
 			if !errors.Is(err, tc.expectedErr) {
 				t.Errorf("Expected %v, got %v", tc.expectedErr, err)
@@ -196,7 +196,7 @@ func Test_SendToChannel(t *testing.T) {
 		success bool
 	}{
 		{
-			name: "Should return error when payload is invalid",
+			name: "Should return true when payload is valid",
 			params: SendSmsToChannelParams{
 				SenderID: "test_sender_id",
 				Channel:  "sms_channel",
@@ -205,7 +205,7 @@ func Test_SendToChannel(t *testing.T) {
 			success: true,
 		},
 		{
-			name:    "Should return true when payload is valid",
+			name:    "Should return error when payload is invalid",
 			params:  SendSmsToChannelParams{},
 			success: false,
 		},
@@ -224,10 +224,10 @@ func Test_SendToChannel(t *testing.T) {
 				t.Errorf("Expected nil, got %v", err)
 			}
 
-			result, _ := client.SendToChannel(tc.params)
+			err = client.SendToChannel(tc.params)
 
-			if result != tc.success {
-				t.Errorf("Expected %v, got %v", tc.success, result)
+			if err != nil && tc.success {
+				t.Errorf("Expected nil, got %v", err)
 			}
 		})
 	}
@@ -269,10 +269,10 @@ func Test_SendToContactGroup(t *testing.T) {
 				t.Errorf("Expected nil, got %v", err)
 			}
 
-			result, _ := client.SendToContactGroup(tc.params)
+			err = client.SendToContactGroup(tc.params)
 
-			if result != tc.success {
-				t.Errorf("Expected %v, got %v", tc.success, result)
+			if err != nil && tc.success {
+				t.Errorf("Expected nil, got %v", err)
 			}
 		})
 	}
@@ -286,13 +286,13 @@ func mockRequest(method, endpoint string, body io.Reader, opt MakeRequestOptions
 			return nil, err
 		}
 		if res.Username != "260979000000" && res.Password != "hello123" {
-			return nil, InvalidCredErr
+			return nil, ErrInvalidCred
 		}
 		return []byte(`{"success":true,"payload":{"token": "test_token"}}`), nil
 	}
 	authHeader := strings.Replace(opt.Headers["Authorization"], "Bearer ", "", 1)
 	if authHeader == "" {
-		return nil, MissingAuthErr
+		return nil, ErrMissingAuth
 	}
 
 	if method == http.MethodPost && strings.Contains(endpoint, "channels") {
@@ -303,17 +303,17 @@ func mockRequest(method, endpoint string, body io.Reader, opt MakeRequestOptions
 		}
 
 		if res["senderId"] == "" || res["message"] == "" {
-			return nil, InvalidPayloadErr
+			return nil, ErrInvalidPayload
 		}
 
-		if res["reciepientType"] == "NOTIFY_RECIEPIENT_TYPE_CHANNEL" {
+		if res["reciepientType"] == NOTIFY_RECIPIENT_TYPE_CHANNEL {
 			if res["channel"] == "" {
-				return nil, InvalidPayloadErr
+				return nil, ErrInvalidPayload
 			}
 		}
-		if res["reciepientType"] == "NOTIFY_RECIEPIENT_TYPE_CONTACT_GROUP" {
+		if res["reciepientType"] == NOTIFY_RECIPIENT_TYPE_CONTACT_GROUP {
 			if res["contactGroup"] == "" {
-				return nil, InvalidPayloadErr
+				return nil, ErrInvalidPayload
 			}
 		}
 

@@ -14,18 +14,18 @@ import (
 const ErrorPrefix = "NOTIFY_SMS: "
 
 var (
-	MissingCredErr     = errors.New(ErrorPrefix + "username and password is missing")
-	InvalidUsernameErr = errors.New(ErrorPrefix + "username is invalid")
-	InvalidCredErr     = errors.New(ErrorPrefix + "failed to authenticate please check your username or password")
-	MissingContactsErr = errors.New(ErrorPrefix + "contacts are missing")
-	InvalidPayloadErr  = errors.New(ErrorPrefix + "invalid payload")
-	MissingAuthErr     = errors.New(ErrorPrefix + "authorization header is missing")
+	ErrMissingCred     = errors.New(ErrorPrefix + "username and password is missing")
+	ErrInvalidUsername = errors.New(ErrorPrefix + "username is invalid")
+	ErrInvalidCred     = errors.New(ErrorPrefix + "failed to authenticate please check your username or password")
+	ErrMissingContacts = errors.New(ErrorPrefix + "contacts are missing")
+	ErrInvalidPayload  = errors.New(ErrorPrefix + "invalid payload")
+	ErrMissingAuth     = errors.New(ErrorPrefix + "authorization header is missing")
 )
 
-type NotifySMS interface {
-	SendToContacts(params SendSmsToCustomContactsParams) (ok bool, err error)
-	SendToChannel(params SendSmsToChannelParams) (ok bool, err error)
-	SendToContactGroup(params SendSmsToContactGroup) (ok bool, err error)
+type Client interface {
+	SendToContacts(params SendSmsToCustomContactsParams) (err error)
+	SendToChannel(params SendSmsToChannelParams) (err error)
+	SendToContactGroup(params SendSmsToContactGroup) (err error)
 	CreateSenderID(params CreateSenderIDParams) (APIResponse[SenderAPIResponse], error)
 	GetSenders() (APIResponse[SendersAPIResponse], error)
 	GetSMSBalance()
@@ -39,13 +39,13 @@ type notify struct {
 	makeRequest func(method, endpoint string, params io.Reader, opt MakeRequestOptions) ([]byte, error)
 }
 
-func NewClient(params NewClientParams) (NotifySMS, error) {
+func NewClient(params NewClientParams) (Client, error) {
 	if params.Password == "" || params.Username == "" {
-		return nil, MissingCredErr
+		return nil, ErrMissingCred
 	}
 
 	if !validateUsername(params.Username) {
-		return nil, InvalidUsernameErr
+		return nil, ErrInvalidUsername
 	}
 
 	client := &notify{
@@ -68,43 +68,12 @@ func NewClient(params NewClientParams) (NotifySMS, error) {
 	return client, nil
 }
 
-func (n *notify) authFunc() error {
-	endpoint := fmt.Sprintf("%s/authentication/web/login?error_context=CONTEXT_API_ERROR_JSON", n.baseURL)
-	bodyInBytes := []byte(fmt.Sprintf(`{"username": "%s", "password": "%s"}`, n.username, n.password))
-
-	bodyReader := bytes.NewReader(bodyInBytes)
-	res, err := n.makeRequest(http.MethodPost, endpoint, bodyReader, MakeRequestOptions{})
-
-	var authResponse APIResponse[AuthAPIResponse]
-
-	if err != nil {
-		log.Printf(ErrorPrefix+"/%s\n", err)
-		os.Exit(1)
-	}
-
-	err = json.Unmarshal(res, &authResponse)
-
-	if err != nil {
-		log.Printf(ErrorPrefix+"/%s\n", err)
-		os.Exit(1)
-	}
-
-	if !authResponse.Success {
-		log.Printf(ErrorPrefix+"/%s\n", err)
-		return InvalidCredErr
-	}
-
-	n.token = authResponse.Payload.Token
-
-	return nil
-}
-
-func (n *notify) SendToContacts(params SendSmsToCustomContactsParams) (bool, error) {
+func (n *notify) SendToContacts(params SendSmsToCustomContactsParams) error {
 	if len(params.Contacts) == 0 {
-		return false, MissingContactsErr
+		return ErrMissingContacts
 	}
 	payload := SendSmsToCustomContactsParams{
-		RecipientType: "NOTIFY_RECIEPIENT_TYPE_CUSTOM",
+		RecipientType: NOTIFY_RECIPIENT_TYPE_CUSTOM,
 		SenderID:      params.SenderID,
 		Contacts:      params.Contacts,
 		Message:       params.Message,
@@ -115,9 +84,9 @@ func (n *notify) SendToContacts(params SendSmsToCustomContactsParams) (bool, err
 
 }
 
-func (n *notify) SendToChannel(params SendSmsToChannelParams) (ok bool, err error) {
+func (n *notify) SendToChannel(params SendSmsToChannelParams) (err error) {
 	payload := SendSmsToChannelParams{
-		RecipientType: "NOTIFY_RECIEPIENT_TYPE_CHANNEL",
+		RecipientType: NOTIFY_RECIPIENT_TYPE_CHANNEL,
 		SenderID:      params.SenderID,
 		Channel:       params.Channel,
 		Message:       params.Message,
@@ -127,9 +96,9 @@ func (n *notify) SendToChannel(params SendSmsToChannelParams) (ok bool, err erro
 	return n.sendSMS(jsonBody)
 }
 
-func (n *notify) SendToContactGroup(params SendSmsToContactGroup) (ok bool, err error) {
+func (n *notify) SendToContactGroup(params SendSmsToContactGroup) (err error) {
 	payload := SendSmsToContactGroup{
-		RecipientType: "NOTIFY_RECIEPIENT_TYPE_CONTACT_GROUP",
+		RecipientType: NOTIFY_RECIPIENT_TYPE_CONTACT_GROUP,
 		SenderID:      params.SenderID,
 		ContactGroup:  params.ContactGroup,
 		Message:       params.Message,
@@ -170,7 +139,38 @@ func (n *notify) GetSMSBalance() {
 	panic("implement me")
 }
 
-func (n *notify) sendSMS(jsonBody []byte) (bool, error) {
+func (n *notify) authFunc() error {
+	endpoint := fmt.Sprintf("%s/authentication/web/login?error_context=CONTEXT_API_ERROR_JSON", n.baseURL)
+	bodyInBytes := []byte(fmt.Sprintf(`{"username": "%s", "password": "%s"}`, n.username, n.password))
+
+	bodyReader := bytes.NewReader(bodyInBytes)
+	res, err := n.makeRequest(http.MethodPost, endpoint, bodyReader, MakeRequestOptions{})
+
+	var authResponse APIResponse[AuthAPIResponse]
+
+	if err != nil {
+		log.Printf(ErrorPrefix+"/%s\n", err)
+		os.Exit(1)
+	}
+
+	err = json.Unmarshal(res, &authResponse)
+
+	if err != nil {
+		log.Printf(ErrorPrefix+"/%s\n", err)
+		os.Exit(1)
+	}
+
+	if !authResponse.Success {
+		log.Printf(ErrorPrefix+"/%s\n", err)
+		return ErrInvalidCred
+	}
+
+	n.token = authResponse.Payload.Token
+
+	return nil
+}
+
+func (n *notify) sendSMS(jsonBody []byte) error {
 	endpoint := fmt.Sprintf("%s/notify/channels/messages/compose?error_context=CONTEXT_API_ERROR_JSON", n.baseURL)
 	headers := make(map[string]string)
 	headers["Authorization"] = fmt.Sprintf("Bearer %s", n.token)
@@ -181,7 +181,7 @@ func (n *notify) sendSMS(jsonBody []byte) (bool, error) {
 
 	if err != nil {
 		log.Println(err)
-		return false, err
+		return err
 	}
 
 	var parsedBody APIResponse[any]
@@ -195,8 +195,8 @@ func (n *notify) sendSMS(jsonBody []byte) (bool, error) {
 		}
 		log.Printf(ErrorPrefix+"%s\n", string(res))
 		log.Printf(ErrorPrefix+"%s\n", err)
-		return false, err
+		return err
 	}
 
-	return true, nil
+	return nil
 }

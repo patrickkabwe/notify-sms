@@ -9,6 +9,12 @@ type RecipientType string
 type SenderID string
 type Token string
 
+const (
+	NOTIFY_RECIPIENT_TYPE_CUSTOM        RecipientType = "NOTIFY_RECIEPIENT_TYPE_CUSTOM"
+	NOTIFY_RECIPIENT_TYPE_CHANNEL       RecipientType = "NOTIFY_RECIEPIENT_TYPE_CHANNEL"
+	NOTIFY_RECIPIENT_TYPE_CONTACT_GROUP RecipientType = "NOTIFY_RECIEPIENT_TYPE_CONTACT_GROUP"
+)
+
 type MakeRequestOptions struct {
 	Headers map[string]string
 }
