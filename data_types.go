@@ -80,37 +80,19 @@ type NewClientParams struct {
 	makeRequest func(method, endpoint string, params io.Reader, opt MakeRequestOptions) ([]byte, error)
 }
 
-type SendSmsToChannelParams struct {
-	RecipientType RecipientType `json:"reciepientType"`
-	// SenderID - sender id collected from GetSenderIDs
-	SenderID string `json:"senderId"`
-	// Channel - channel you are trying to send sms message to.
-	Channel string
-	// Message - Text message you are sending to contact(s)
-	// e.g Hello Notify
-	Message string `json:"message"`
-}
-
-type SendSmsToCustomContactsParams struct {
+type Message struct {
 	RecipientType RecipientType `json:"reciepientType"`
 	// SenderID - sender id collected from GetSenderIDs
 	SenderID string `json:"senderId"`
 	// Contacts - phone numbers you are trying to send sms to.
 	// e.g [+260979600000]
 	Contacts []string `json:"reciepients"`
-	// Message - Text message you are sending to contact(s)
-	// e.g Hello Notify
-	Message string `json:"message"`
-}
-
-type SendSmsToContactGroup struct {
-	RecipientType RecipientType `json:"reciepientType"`
-	// SenderID - sender id collected from GetSenderIDs
-	SenderID string `json:"senderId"`
+	// Channel - channel you are trying to send sms message to. set RecipientType to NOTIFY_RECIPIENT_TYPE_CHANNEL
+	Channel string
 	// ContactGroup - The group id you are trying to send a sms message.
-	// PS: Only define this field when you are trying to send sms to a specific group.
+	// PS: Only define this field when you are trying to send sms to a specific group. set RecipientType to NOTIFY_RECIPIENT_TYPE_CONTACT_GROUP
 	ContactGroup string `json:"contactGroup"`
 	// Message - Text message you are sending to contact(s)
 	// e.g Hello Notify
-	Message string
+	Message string `json:"message"`
 }

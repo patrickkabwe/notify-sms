@@ -23,9 +23,9 @@ var (
 )
 
 type Client interface {
-	SendToContacts(params SendSmsToCustomContactsParams) (err error)
-	SendToChannel(params SendSmsToChannelParams) (err error)
-	SendToContactGroup(params SendSmsToContactGroup) (err error)
+	SendToContacts(params Message) (err error)
+	SendToChannel(params Message) (err error)
+	SendToContactGroup(params Message) (err error)
 	CreateSenderID(params CreateSenderIDParams) (APIResponse[SenderAPIResponse], error)
 	GetSenders() (APIResponse[SendersAPIResponse], error)
 	GetSMSBalance()
@@ -68,11 +68,11 @@ func NewClient(params NewClientParams) (Client, error) {
 	return client, nil
 }
 
-func (n *notify) SendToContacts(params SendSmsToCustomContactsParams) error {
+func (n *notify) SendToContacts(params Message) error {
 	if len(params.Contacts) == 0 {
 		return ErrMissingContacts
 	}
-	payload := SendSmsToCustomContactsParams{
+	payload := Message{
 		RecipientType: NOTIFY_RECIPIENT_TYPE_CUSTOM,
 		SenderID:      params.SenderID,
 		Contacts:      params.Contacts,
@@ -84,8 +84,8 @@ func (n *notify) SendToContacts(params SendSmsToCustomContactsParams) error {
 
 }
 
-func (n *notify) SendToChannel(params SendSmsToChannelParams) (err error) {
-	payload := SendSmsToChannelParams{
+func (n *notify) SendToChannel(params Message) (err error) {
+	payload := Message{
 		RecipientType: NOTIFY_RECIPIENT_TYPE_CHANNEL,
 		SenderID:      params.SenderID,
 		Channel:       params.Channel,
@@ -96,8 +96,8 @@ func (n *notify) SendToChannel(params SendSmsToChannelParams) (err error) {
 	return n.sendSMS(jsonBody)
 }
 
-func (n *notify) SendToContactGroup(params SendSmsToContactGroup) (err error) {
-	payload := SendSmsToContactGroup{
+func (n *notify) SendToContactGroup(params Message) (err error) {
+	payload := Message{
 		RecipientType: NOTIFY_RECIPIENT_TYPE_CONTACT_GROUP,
 		SenderID:      params.SenderID,
 		ContactGroup:  params.ContactGroup,
