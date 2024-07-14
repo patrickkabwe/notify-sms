@@ -44,12 +44,12 @@ func main() {
 		return
 	}
 
-	res, err := client.GetSenders()
+	senders, err := client.GetSenders()
 	if err != nil {
 		panic(err)
 	}
 	
-	fmt.Println("RES: ", res)
+	fmt.Println("Senders: ", senders)
 }
 ```
 
@@ -74,7 +74,7 @@ func main() {
 		return
 	}
 
-	res, err := client.SendToContacts(notifysms.SendSmsToCustomContactsParams{
+	err := client.SendToContacts(notifysms.SendSmsToCustomContactsParams{
 		Contacts: []string{"+26097********"},
 		Message:  "Hello Patrick from Notify GO SDK",
 		SenderID: "1234888888888888888888", // SenderId returned from the GetSenders()
@@ -84,7 +84,7 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Println("RES: ", res)
+	fmt.Println("Sms Sent!")
 }
 ```
 
