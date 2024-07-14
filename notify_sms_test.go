@@ -136,13 +136,13 @@ func TestNotify_GetSenders(t *testing.T) {
 func TestSendToContacts(t *testing.T) {
 	testCases := []struct {
 		name         string
-		params       SendSmsToCustomContactsParams
+		params       Message
 		expectedErr  error
 		expectedBool bool
 	}{
 		{
 			name: "Should send sms to custom contacts",
-			params: SendSmsToCustomContactsParams{
+			params: Message{
 				Contacts: []string{"+260979600000"},
 				Message:  "Hello Patrick from Go SDK",
 				SenderID: "test_sender_id",
@@ -152,7 +152,7 @@ func TestSendToContacts(t *testing.T) {
 		},
 		{
 			name: "Should return error when contacts are missing",
-			params: SendSmsToCustomContactsParams{
+			params: Message{
 				Contacts: []string{},
 				Message:  "Hello Patrick from Go SDK",
 				SenderID: "test_sender_id",
@@ -192,12 +192,12 @@ func Test_SendToChannel(t *testing.T) {
 
 	testCases := []struct {
 		name    string
-		params  SendSmsToChannelParams
+		params  Message
 		success bool
 	}{
 		{
 			name: "Should return true when payload is valid",
-			params: SendSmsToChannelParams{
+			params: Message{
 				SenderID: "test_sender_id",
 				Channel:  "sms_channel",
 				Message:  "test message",
@@ -206,7 +206,7 @@ func Test_SendToChannel(t *testing.T) {
 		},
 		{
 			name:    "Should return error when payload is invalid",
-			params:  SendSmsToChannelParams{},
+			params:  Message{},
 			success: false,
 		},
 	}
@@ -237,12 +237,12 @@ func Test_SendToContactGroup(t *testing.T) {
 
 	testCases := []struct {
 		name    string
-		params  SendSmsToContactGroup
+		params  Message
 		success bool
 	}{
 		{
 			name: "Should return error when payload is invalid",
-			params: SendSmsToContactGroup{
+			params: Message{
 				SenderID:     "test_sender_id",
 				ContactGroup: "sms_channel",
 				Message:      "test message",
@@ -251,7 +251,7 @@ func Test_SendToContactGroup(t *testing.T) {
 		},
 		{
 			name:    "Should return true when payload is valid",
-			params:  SendSmsToContactGroup{},
+			params:  Message{},
 			success: false,
 		},
 	}
